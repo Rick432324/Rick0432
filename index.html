@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>我的个人主页</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+    background: url('https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/EXPLORE_PDPScreenshotRefresh2024_multipleBiomes_01.png') no-repeat center center fixed;
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+        }
+        .card {
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(10px);
+            padding: 48px 40px;
+            border-radius: 32px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            text-align: center;
+            max-width: 480px;
+            width: 90%;
+            transition: transform 0.3s;
+        }
+        .card:hover { transform: translateY(-6px); }
+        .avatar {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #fff;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            margin-bottom: 20px;
+        }
+        h1 { font-size: 28px; color: #1e2a3a; margin-bottom: 6px; }
+        .title { color: #4a6fa5; font-size: 18px; font-weight: 500; margin-bottom: 16px; }
+        .bio { color: #3d4f66; font-size: 15px; line-height: 1.7; margin-bottom: 24px; }
+        .links { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+        .links a {
+            text-decoration: none;
+            background: #1e2a3a;
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: 0.25s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .links a:hover { background: #4a6fa5; transform: scale(1.04); }
+        .footer { margin-top: 28px; font-size: 13px; color: #7a8ba3; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <!-- 头像：替换成你自己的图片链接-->
+        <img class="avatar" src="file:///C:/Users/Rick/Downloads/Steve_(classic)_JE6.png" alt="头像" />
+        <h1>俞立铭</h1>
+        <div class="title">广东工业大学26级集成电路4班</div>
+        <p class="bio">
+            喜欢旅游、摄影、玩游戏<br />
+            希望加入集协大家庭
+        </p>
+        <div class="links">
+            <a href="https://github.com/Rick432324" target="_blank">🐙 GitHub</a>
+            <a href="https://www.minecraft.net/zh-hans" target="_blank">🎮 Minecraft</a>
+            <a href="mailto:3234324074@qq.com@qq.com">📧 邮件</a>
+            <a href="mailto:13538950150@163.com">📧 备用邮件</a>
+    </div>
+</body>
+</html>
