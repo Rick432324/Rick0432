@@ -66,6 +66,7 @@
 <h1>扫 雷</h1>
 <div id="hud">剩余雷数：<b id="minesLeft">10</b></div>
 <div id="status">点击任意格子开始</div>
+<button id="btnAI">AI 自动完成</button>
 <div id="board"></div>
 <button id="btnNew">新一局</button>
 
@@ -145,7 +146,7 @@ function countAdjMines(x, y) {
 
 /* 左键翻开 */
 function onLeftClick(x, y) {
-  if (gameOver) return;
+  if (gameOver || aiRunning) return;
   const cell = board[y][x];
   if (cell.open || cell.flag) return;
 
@@ -189,7 +190,7 @@ function openCell(x, y) {
 
 /* 右键插旗 */
 function onRightClick(x, y) {
-  if (gameOver) return;
+  if (gameOver || aiRunning) return;
   const cell = board[y][x];
   if (cell.open) return;
   if (!cell.flag && flagCount >= MINE_COUNT) return;
@@ -243,7 +244,130 @@ function updateHUD() {
 }
 
 document.getElementById('btnNew').onclick = initGame;
+/* ========== 阶段二：AI 自动完成（第二次 commit） ========== */
+let aiRunning = false;
 
+function neighbors(x, y) {
+  const list = [];
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) list.push([nx, ny]);
+    }
+  return list;
+}
+
+/* 规则推理：插旗 + 翻安全格 */
+function aiStep() {
+  if (gameOver) return false;
+  let progress = false;
+
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const c = board[y][x];
+      if (!c.open || c.count === 0) continue;
+
+      const adj = neighbors(x, y);
+      const unknown = adj.filter(([nx, ny]) =>
+        !board[ny][nx].open && !board[ny][nx].flag
+      );
+      const flagged = adj.filter(([nx, ny]) => board[ny][nx].flag);
+
+      // 规则1：剩余雷数 == 未知格数 → 全是雷
+      if (unknown.length > 0 && c.count - flagged.length === unknown.length) {
+        for (const [nx, ny] of unknown) {
+          board[ny][nx].flag = true;
+          flagCount++;
+          board[ny][nx].el.classList.add('flag');
+          board[ny][nx].el.textContent = '🚩';
+          progress = true;
+        }
+      }
+
+      // 规则2：已插旗数 == 数字 → 其余安全
+      if (flagged.length === c.count && unknown.length > 0) {
+        for (const [nx, ny] of unknown) {
+          openCell(nx, ny);
+          progress = true;
+        }
+      }
+    }
+  }
+
+  if (progress) {
+    checkWin();
+    updateHUD();
+  }
+  return progress;
+}
+
+/* 概率兜底：选风险最小的格子 */
+function aiGuess() {
+  if (gameOver) return false;
+  if (firstClick) {
+    onLeftClick(Math.floor(COLS / 2), Math.floor(ROWS / 2));
+    return true;
+  }
+
+  let bestCell = null, bestRisk = Infinity;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const c = board[y][x];
+      if (c.open || c.flag) continue;
+      let risk = 0;
+      for (const [nx, ny] of neighbors(x, y)) {
+        const n = board[ny][nx];
+        if (!n.open || n.count === 0) continue;
+        const nAdj = neighbors(nx, ny);
+        const nUnknown = nAdj.filter(([ax, ay]) =>
+          !board[ay][ax].open && !board[ay][ax].flag
+        ).length;
+        const nFlag = nAdj.filter(([ax, ay]) => board[ay][ax].flag).length;
+        if (nUnknown > 0) {
+          risk = Math.max(risk, (n.count - nFlag) / nUnknown);
+        }
+      }
+      if (risk < bestRisk) { bestRisk = risk; bestCell = [x, y]; }
+    }
+  }
+  if (bestCell) { onLeftClick(bestCell[0], bestCell[1]); return true; }
+  return false;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function runAI() {
+  if (aiRunning || gameOver) return;
+  aiRunning = true;
+  document.getElementById('btnAI').disabled = true;
+  statusEl.textContent = '🤖 AI 推理中…';
+  statusEl.className = '';
+
+  if (firstClick) {
+    onLeftClick(Math.floor(COLS / 2), Math.floor(ROWS / 2));
+    await sleep(200);
+  }
+
+  let guard = 0;
+  while (!gameOver && guard < 500) {
+    guard++;
+    let moved = aiStep();
+    if (!moved) moved = aiGuess();
+    await sleep(180);
+    if (!moved) break;
+  }
+
+  aiRunning = false;
+  document.getElementById('btnAI').disabled = false;
+  if (win) { statusEl.textContent = '🎉 AI 通关成功！'; statusEl.className = 'win'; }
+  else if (gameOver) { statusEl.textContent = '💥 AI 踩雷了～'; statusEl.className = 'lose'; }
+}
+
+document.getElementById('btnAI').onclick = () => {
+  if (gameOver) initGame();
+  runAI();
+};
 initGame();
 </script>
 </body>
