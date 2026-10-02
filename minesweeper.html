@@ -59,16 +59,32 @@
     cursor: pointer;
     font-size: 14px;
   }
+body.light {
+  background: #f5f5f5;
+  color: #222;
+}
+body.light #board { background: #fff; }
+body.light .cell { background: #d0d0d0; }
+body.light .cell:hover { background: #c0c0c0; }
+body.light .cell.open { background: #e8e8e8; }
+body.light .n7 { color: #333; }
 </style>
 </head>
 <body>
 
 <h1>扫 雷</h1>
-<div id="hud">剩余雷数：<b id="minesLeft">10</b></div>
+<div id="hud">
+  得分：<b id="score">0</b> |
+  最高分：<b id="best">0</b> |
+  局数：<b id="games">0</b> |
+  剩余雷数：<b id="minesLeft">10</b>
+</div>
 <div id="status">点击任意格子开始</div>
 <button id="btnAI">AI 自动完成</button>
 <div id="board"></div>
 <button id="btnNew">新一局</button>
+<button id="btnReset">重置本局</button>
+<button id="btnTheme">切换主题</button>
 
 <script>
 /* ========== 基础扫雷（第一次 commit） ========== */
@@ -368,7 +384,79 @@ document.getElementById('btnAI').onclick = () => {
   if (gameOver) initGame();
   runAI();
 };
-initGame();
+/* ========== 计分 + 主题 + 战绩（第三次 commit） ========== */
+let bestScore = +localStorage.getItem('ms_best') || 0;
+let gamesPlayed = +localStorage.getItem('ms_games') || 0;
+let history = JSON.parse(localStorage.getItem('ms_hist') || '[]');
+
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const gamesEl = document.getElementById('games');
+
+/* 计算得分 */
+function computeScore() {
+  if (!gameOver) {
+    let s = openedCount * 10;
+    for (let y = 0; y < ROWS; y++)
+      for (let x = 0; x < COLS; x++)
+        if (board[y][x].flag && board[y][x].mine) s += 5;
+    return s;
+  }
+  if (win) return (COLS * ROWS - MINE_COUNT) * 10 + MINE_COUNT * 5;
+  return 0;
+}
+
+/* 更新 HUD */
+const _oldUpdateHUD = updateHUD;
+updateHUD = function () {
+  _oldUpdateHUD();
+  scoreEl.textContent = computeScore();
+  bestEl.textContent = bestScore;
+  gamesEl.textContent = gamesPlayed;
+};
+
+/* 记录战绩 */
+function recordGame(isWin) {
+  const score = isWin ? (COLS * ROWS - MINE_COUNT) * 10 + MINE_COUNT * 5 : 0;
+  gamesPlayed++;
+  if (score > bestScore) bestScore = score;
+  history.unshift({ win: isWin, score });
+  history = history.slice(0, 10);
+  localStorage.setItem('ms_best', bestScore);
+  localStorage.setItem('ms_games', gamesPlayed);
+  localStorage.setItem('ms_hist', JSON.stringify(history));
+  updateHUD();
+}
+
+/* 在 checkWin / loseGame 里调用 recordGame */
+const _oldCheckWin = checkWin;
+checkWin = function () {
+  const wasWin = win;
+  _oldCheckWin();
+  if (!wasWin && win) recordGame(true);
+};
+
+const _oldLoseGame = loseGame;
+loseGame = function () {
+  _oldLoseGame();
+  recordGame(false);
+};
+
+/* 主题切换（刷新保留） */
+function applyTheme() {
+  const t = localStorage.getItem('ms_theme') || 'dark';
+  document.body.classList.toggle('light', t === 'light');
+}
+applyTheme();
+document.getElementById('btnTheme').onclick = () => {
+  const isLight = document.body.classList.toggle('light');
+  localStorage.setItem('ms_theme', isLight ? 'light' : 'dark');
+};
+
+/* 重置本局（不计战绩） */
+document.getElementById('btnReset').onclick = () => {
+  initGame();
+};initGame();
 </script>
 </body>
 </html>
