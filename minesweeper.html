@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>扫雷</title>
+<style>
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #1e1e2e;
+    color: #eee;
+    font-family: sans-serif;
+    margin: 0;
+    padding: 20px;
+  }
+  h1 { margin: 10px 0; }
+  #hud { margin: 10px 0; font-size: 16px; }
+  #board {
+    display: grid;
+    grid-template-columns: repeat(9, 36px);
+    grid-template-rows: repeat(9, 36px);
+    gap: 2px;
+    background: #2a2a3c;
+    padding: 6px;
+    border-radius: 6px;
+  }
+  .cell {
+    width: 36px; height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #3a3a4c;
+    border-radius: 3px;
+    cursor: pointer;
+    user-select: none;
+    font-weight: bold;
+    font-size: 15px;
+  }
+  .cell:hover { background: #4a4a5c; }
+  .cell.open { background: #252535; cursor: default; }
+  .cell.flag { color: #ff6b6b; font-size: 18px; }
+  .cell.mine { background: #f7768e; color: #fff; }
+  .cell.wrong { background: #8b5a5a; color: #fff; }
+  .n1 { color: #4aa3ff; } .n2 { color: #4ad46a; }
+  .n3 { color: #ff6b6b; } .n4 { color: #b06bff; }
+  .n5 { color: #ff9f43; } .n6 { color: #00d2d3; }
+  .n7 { color: #ddd; }    .n8 { color: #888; }
+  #status { min-height: 24px; margin: 8px 0; font-size: 17px; font-weight: bold; }
+  #status.win { color: #4ad46a; }
+  #status.lose { color: #f7768e; }
+  button {
+    margin: 6px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #7aa2f7;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<h1>扫 雷</h1>
+<div id="hud">剩余雷数：<b id="minesLeft">10</b></div>
+<div id="status">点击任意格子开始</div>
+<div id="board"></div>
+<button id="btnNew">新一局</button>
+
+<script>
+/* ========== 基础扫雷（第一次 commit） ========== */
+const COLS = 9, ROWS = 9, MINE_COUNT = 10;
+
+let board = [];
+let firstClick = true;
+let gameOver = false;
+let win = false;
+let flagCount = 0;
+let openedCount = 0;
+
+const boardEl = document.getElementById('board');
+const statusEl = document.getElementById('status');
+const minesLeftEl = document.getElementById('minesLeft');
+
+/* 初始化一局 */
+function initGame() {
+  board = [];
+  firstClick = true;
+  gameOver = false;
+  win = false;
+  flagCount = 0;
+  openedCount = 0;
+  boardEl.innerHTML = '';
+  statusEl.textContent = '点击任意格子开始';
+  statusEl.className = '';
+
+  for (let y = 0; y < ROWS; y++) {
+    board[y] = [];
+    for (let x = 0; x < COLS; x++) {
+      const el = document.createElement('div');
+      el.className = 'cell';
+      el.addEventListener('click', () => onLeftClick(x, y));
+      el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        onRightClick(x, y);
+      });
+      boardEl.appendChild(el);
+      board[y][x] = { mine: false, open: false, flag: false, count: 0, el };
+    }
+  }
+  updateHUD();
+}
+
+/* 布雷（首次点击后布雷，首点及其八邻域安全） */
+function placeMines(sx, sy) {
+  let placed = 0;
+  while (placed < MINE_COUNT) {
+    const x = Math.floor(Math.random() * COLS);
+    const y = Math.floor(Math.random() * ROWS);
+    if (Math.abs(x - sx) <= 1 && Math.abs(y - sy) <= 1) continue;
+    if (board[y][x].mine) continue;
+    board[y][x].mine = true;
+    placed++;
+  }
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (board[y][x].mine) continue;
+      board[y][x].count = countAdjMines(x, y);
+    }
+  }
+}
+
+function countAdjMines(x, y) {
+  let c = 0;
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && board[ny][nx].mine) c++;
+    }
+  return c;
+}
+
+/* 左键翻开 */
+function onLeftClick(x, y) {
+  if (gameOver) return;
+  const cell = board[y][x];
+  if (cell.open || cell.flag) return;
+
+  if (firstClick) {
+    placeMines(x, y);
+    firstClick = false;
+  }
+
+  if (cell.mine) {
+    cell.open = true;
+    cell.el.classList.add('open', 'mine');
+    cell.el.textContent = '💣';
+    loseGame();
+    return;
+  }
+
+  openCell(x, y);
+  checkWin();
+  updateHUD();
+}
+
+/* 递归展开空白格 */
+function openCell(x, y) {
+  const cell = board[y][x];
+  if (cell.open || cell.flag || cell.mine) return;
+  cell.open = true;
+  openedCount++;
+  cell.el.classList.add('open');
+  if (cell.count > 0) {
+    cell.el.textContent = cell.count;
+    cell.el.classList.add('n' + cell.count);
+  } else {
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) openCell(nx, ny);
+      }
+  }
+}
+
+/* 右键插旗 */
+function onRightClick(x, y) {
+  if (gameOver) return;
+  const cell = board[y][x];
+  if (cell.open) return;
+  if (!cell.flag && flagCount >= MINE_COUNT) return;
+  cell.flag = !cell.flag;
+  flagCount += cell.flag ? 1 : -1;
+  cell.el.classList.toggle('flag', cell.flag);
+  cell.el.textContent = cell.flag ? '🚩' : '';
+  updateHUD();
+}
+
+/* 胜利判定 */
+function checkWin() {
+  if (openedCount === COLS * ROWS - MINE_COUNT) {
+    win = true;
+    gameOver = true;
+    statusEl.textContent = '🎉 胜利！';
+    statusEl.className = 'win';
+    for (let y = 0; y < ROWS; y++)
+      for (let x = 0; x < COLS; x++) {
+        const c = board[y][x];
+        if (c.mine && !c.flag) {
+          c.flag = true;
+          c.el.classList.add('flag');
+          c.el.textContent = '🚩';
+        }
+      }
+  }
+}
+
+/* 失败 */
+function loseGame() {
+  gameOver = true;
+  statusEl.textContent = '💥 踩雷了！';
+  statusEl.className = 'lose';
+  for (let y = 0; y < ROWS; y++)
+    for (let x = 0; x < COLS; x++) {
+      const c = board[y][x];
+      if (c.mine && !c.flag) {
+        c.el.classList.add('open', 'mine');
+        c.el.textContent = '💣';
+      } else if (!c.mine && c.flag) {
+        c.el.classList.add('wrong');
+        c.el.textContent = '❌';
+      }
+    }
+}
+
+/* HUD */
+function updateHUD() {
+  minesLeftEl.textContent = Math.max(0, MINE_COUNT - flagCount);
+}
+
+document.getElementById('btnNew').onclick = initGame;
+
+initGame();
+</script>
+</body>
+</html>
