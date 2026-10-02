@@ -9,3 +9,4 @@ git push:把本地提交推送到 GitHub
 git pull:把远程更新拉回本地
 git branch:查看/新建分支
 git merge:合并分支
+LICENSE： 选 MIT，理由是：MIT 是最宽松的开源协议之一，允许别人自由使用、修改、分发我的代码，只需保留版权声明。作为学习作品，我希望代码能被同学参考，所以选 MIT。
